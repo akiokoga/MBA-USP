@@ -1,0 +1,260 @@
+# Pacotes a serem instalados e carregados ---------------------------------
+pacotes <- c("plotly","tidyverse","ggrepel","reshape2","FactoMineR",
+             "knitr","kableExtra")
+
+if(sum(as.numeric(!pacotes %in% installed.packages())) != 0){
+  instalador <- pacotes[!pacotes %in% installed.packages()]
+  for(i in 1:length(instalador)) {
+    install.packages(instalador, dependencies = T)
+    break()}
+  sapply(pacotes, require, character = T) 
+} else {
+  sapply(pacotes, require, character = T) 
+}
+
+# Exercício 01 ------------------------------------------------------------
+
+# A base de dados a seguir diz respeito a uma pesquisa de opinião ocorrida
+# a respeito do decorrer de 03 anos da gestão de dado prefeito.
+
+# A vários eleitores foi proposta a afirmação 'Estou satisfeito com a gestão
+# do prefeito!"
+
+# Proponha uma ANACOR e discuta os resultados encontrados.
+
+# Carregando a base de dados
+load("gestao_municipal.RData")
+
+# Apresentando os dados
+gestao_municipal %>% 
+  kable() %>%
+  kable_styling(bootstrap_options = "striped", 
+                full_width = TRUE, 
+                font_size = 12)
+
+# Estabelecendo uma tabela de contingências
+tab_gestao <- table(gestao_municipal$avaliação,
+                    gestao_municipal$ano)
+
+tab_gestao
+
+# Teste Qui-Quadrado
+qui2_gestao <- chisq.test(tab_gestao)
+qui2_gestao
+
+# Apresentando o Mapa de Calor dos Resíduos Padronizados Ajustados
+data.frame(qui2_gestao$stdres) %>%
+  rename(avaliação = 1,
+         ano = 2) %>% 
+  ggplot(aes(x = ano, y = avaliação, fill = Freq, label = round(Freq,3))) +
+  geom_tile() +
+  geom_text(size = 3) +
+  scale_fill_gradient2(low = "#440154FF", 
+                       mid = "white", 
+                       high = "#FDE725FF",
+                       midpoint = 0) +
+  labs(x = NULL, y = NULL) +
+  theme(legend.title = element_blank(), 
+        panel.background = element_rect("white"),
+        legend.position = "none")
+
+# Interpondo a ANACOR
+anacor_gestao <- CA(tab_gestao)
+
+# Mapa Perceptual Elegante
+# Capturando todas as coordenadas num só objeto
+ca_coordenadas <- rbind(anacor_gestao$row$coord, anacor_gestao$col$coord)
+ca_coordenadas
+
+# Capturando a quantidade de categorias por variável
+id_var <- apply(gestao_municipal[,1:2],
+                MARGIN =  2,
+                FUN = function(x) nlevels(as.factor(x)))
+id_var
+
+# Juntando as coordenadas e as categorias capturadas anteriormente
+ca_coordenadas_final <- data.frame(ca_coordenadas, 
+                                   Variable = rep(names(id_var), id_var))
+
+ca_coordenadas_final
+
+# Mapa perceptual bidimensional
+
+# Mapa perceptual elegante:
+ca_coordenadas_final %>% 
+  rownames_to_column() %>% 
+  rename(Category = 1) %>% 
+  ggplot(aes(x = Dim.1, 
+             y = Dim.2, 
+             label = Category, 
+             fill = Variable,
+             color = Variable,
+             shape = Variable)) +
+  geom_point(size = 2) +
+  geom_label_repel(max.overlaps = 100,
+                  size = 3,
+                  color = "white") +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "gray50") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "gray50") +
+  labs(x = paste("Dimension 1:", paste0(round(anacor_gestao$eig[1,2], digits = 2), "%")),
+       y = paste("Dimension 2:", paste0(round(anacor_gestao$eig[2,2], digits = 2), "%"))) +
+  scale_fill_viridis_d(option = "cividis") +
+  scale_color_viridis_d(option = "cividis") +
+  theme(panel.background = element_rect("white"),
+        panel.border = element_rect("NA"),
+        panel.grid = element_line("gray95"),
+        legend.position = "none")
+
+
+# Exercício 02 ------------------------------------------------------------
+
+# Estabeleça uma ACM e estude as associações existentes entre as variáveis
+# disease, fever, itch e arthralgia.
+
+# Carregando a base de dados
+load("symptoms.RData")
+
+# Apresentando os dados
+symptoms %>% 
+  kable() %>%
+  kable_styling(bootstrap_options = "striped", 
+                full_width = TRUE, 
+                font_size = 12)
+
+# Verificando as associações existentes entre as categorias das variáveis da
+# base de dados, par a par
+
+# A) Disease x Fever
+tab_disease_fever <- table(symptoms$disease,
+                           symptoms$fever)
+
+qui2_disease_fever <- chisq.test(tab_disease_fever)
+qui2_disease_fever
+
+# B) Disease x Itch
+tab_disease_itch <- table(symptoms$disease,
+                          symptoms$itch)
+
+tab_disease_itch
+
+qui2_disease_itch <- chisq.test(tab_disease_itch)
+qui2_disease_itch
+
+# C) Disease x Arthralgia
+tab_disease_arthralgia <- table(symptoms$disease,
+                                symptoms$arthralgia)
+
+tab_disease_arthralgia
+
+qui2_disease_arthralgia <- chisq.test(tab_disease_arthralgia)
+qui2_disease_arthralgia
+
+# D) Fever x Itch
+tab_fever_itch <- table(symptoms$fever,
+                        symptoms$itch)
+
+tab_fever_itch
+
+qui2_fever_itch <- chisq.test(tab_fever_itch)
+qui2_fever_itch
+
+# E) Fever x Arthralgia
+tab_fever_arthralgia <- table(symptoms$fever,
+                              symptoms$arthralgia)
+
+tab_fever_arthralgia
+
+qui2_fever_arthralgia <- chisq.test(tab_fever_arthralgia)
+qui2_fever_arthralgia
+
+# F) Itch x Arthralgia
+tab_itch_arthralgia <- table(symptoms$itch,
+                             symptoms$arthralgia)
+
+tab_itch_arthralgia
+
+qui2_itch_arthralgia <- chisq.test(tab_itch_arthralgia)
+qui2_itch_arthralgia
+
+# Interpondo a ACM
+ACM_symptoms <- MCA(symptoms[,2:5], method = "Indicador")
+
+# Para estudarmos o percentual da inérica principal explicada por 
+# dimensão, podemos:
+categorias <- apply(symptoms[,2:5], 
+                    MARGIN =  2, 
+                    FUN = function(x) nlevels(as.factor(x)))
+
+categorias
+
+# Capturando as coordenadas das categorias
+ACM_symptoms_mp <- data.frame(ACM_symptoms$var$coord, Variável = rep(names(categorias), categorias))
+
+#Plotando o Mapa Perceptual das categorias:
+ACM_symptoms_mp %>%
+  rownames_to_column() %>%
+  rename(Categoria = 1) %>%
+  ggplot(aes(x = Dim.1, 
+             y = Dim.2, 
+             label = Categoria, 
+             color = Variável, 
+             fill = Variável,
+             shape = Variável)) +
+  geom_point() +
+  geom_label_repel(color = "white") +
+  geom_vline(aes(xintercept = 0), linetype = "dashed", color = "grey") +
+  geom_hline(aes(yintercept = 0), linetype = "dashed", color = "grey") +
+  labs(x = paste("Dimensão 1:", paste0(round(ACM_symptoms$eig[1,2], 2), "%")),
+       y = paste("Dimensão 2:", paste0(round(ACM_symptoms$eig[2,2], 2), "%"))) +
+  scale_color_viridis_d() +
+  scale_fill_viridis_d() +
+  theme(panel.background = element_rect("white"),
+        panel.border = element_rect("NA"),
+        panel.grid = element_line("gray95"),
+        legend.position = "none")
+
+#Plotando o Mapa Perceptual das categorias e das observações:
+ACM_symptoms_observacoes_df <- data.frame(ACM_symptoms$ind$coord)
+
+ACM_symptoms_observacoes_df %>% 
+  ggplot(aes(x = Dim.1, y = Dim.2, label = symptoms$id)) +
+  geom_point(shape = 17, color = "#E76F5AFF", size = 2) +
+  geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_vline(xintercept = 0, linetype = "dashed", color = "grey50") +
+  geom_text_repel(max.overlaps = 600, size = 3) +
+  geom_density2d(color = "gray80") +
+  geom_label_repel(data = ACM_symptoms_mp, 
+                   aes(x = Dim.1, y = Dim.2, 
+                       label = rownames(ACM_symptoms_mp), 
+                       fill = Variável), 
+                   color = "white") +
+  labs(x = paste("Dimensão 1:", paste0(round(ACM_symptoms$eig[,2][1], digits = 2), "%")),
+       y = paste("Dimensão 2:", paste0(round(ACM_symptoms$eig[,2][2], digits = 2), "%"))) +
+  scale_fill_viridis_d() +
+  theme(panel.background = element_rect("white"),
+        panel.border = element_rect("NA"),
+        panel.grid = element_line("gray95"),
+        legend.position = "none")
+
+# Mapa Perceptual 3D
+ACM_symptoms_3D <- plot_ly()
+
+# Adicionando as coordenadas
+ACM_symptoms_3D <- add_trace(p = ACM_symptoms_3D,
+                             x = ACM_symptoms_mp[,1],
+                             y = ACM_symptoms_mp[,2],
+                             z = ACM_symptoms_mp[,3],
+                             mode = "text",
+                             text = rownames(ACM_symptoms_mp),
+                             textfont = list(color = "#440154FF"),
+                             showlegend = FALSE)
+
+# Adicionando as labels das dimensões
+ACM_symptoms_3D <- layout(p = ACM_symptoms_3D,
+                          scene = list(xaxis = list(title = colnames(ACM_symptoms_mp)[1]),
+                                       yaxis = list(title = colnames(ACM_symptoms_mp)[2]),
+                                       zaxis = list(title = colnames(ACM_symptoms_mp)[3]),
+                                       aspectmode = "data"))
+
+ACM_symptoms_3D
+# Fim ---------------------------------------------------------------------
